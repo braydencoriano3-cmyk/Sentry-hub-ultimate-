@@ -1,0 +1,370 @@
+-- =========================
+-- SENTRY HUB ULTIMATE v3
+-- Key: SentryHub_isW
+-- Author: Brodnon Jaime’s Dev Panel
+-- Fully loaded with ALL features
+-- =========================
+
+-- SERVICES
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- SETTINGS
+local KEY = "SentryHub_isW"
+local KEY_DURATION = 21600 -- 6 hours
+local DISCORD_LINK = "https://discord.gg/uSJSEF6kh"
+local activeConnections = {}
+local hitboxDefaults = {}
+
+-- =========================
+-- UTILITY FUNCTIONS
+-- =========================
+local function TweenObject(obj, propTable, time)
+	local tween = TweenService:Create(obj, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), propTable)
+	tween:Play()
+	return tween
+end
+
+local function CreateButton(parent, text, callback)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1,0,0,35)
+	btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+	btn.TextColor3 = Color3.fromRGB(255,255,255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 16
+	btn.Text = text
+	btn.Parent = parent
+	btn.AutoButtonColor = false
+	local corner = Instance.new("UICorner", btn)
+	corner.CornerRadius = UDim.new(0,8)
+	btn.MouseEnter:Connect(function() TweenObject(btn,{BackgroundColor3=Color3.fromRGB(50,50,50)},0.2) end)
+	btn.MouseLeave:Connect(function() TweenObject(btn,{BackgroundColor3=Color3.fromRGB(30,30,30)},0.2) end)
+	btn.MouseButton1Click:Connect(callback)
+	return btn
+end
+
+local function CreateToggle(parent, text, callback)
+	local state = false
+	local btn
+	btn = CreateButton(parent, text.." OFF", function()
+		state = not state
+		btn.Text = text.." "..(state and "ON" or "OFF")
+		callback(state)
+	end)
+	return btn
+end
+
+local function CreateSlider(parent, text, min, max, default, callback)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1,0,0,35)
+	frame.BackgroundTransparency = 1
+	frame.Parent = parent
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.4,0,1,0)
+	label.Position = UDim2.new(0,0,0,0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255,255,255)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 14
+	label.Text = text.." "..tostring(default)
+	label.Parent = frame
+	local textbox = Instance.new("TextBox")
+	textbox.Size = UDim2.new(0.55,0,1,0)
+	textbox.Position = UDim2.new(0.45,0,0,0)
+	textbox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+	textbox.TextColor3 = Color3.fromRGB(255,255,255)
+	textbox.Text = tostring(default)
+	textbox.ClearTextOnFocus = false
+	textbox.Font = Enum.Font.GothamBold
+	textbox.TextSize = 14
+	textbox.Parent = frame
+	textbox:GetPropertyChangedSignal("Text"):Connect(function()
+		local val = tonumber(textbox.Text)
+		if val then
+			if val < min then val=min end
+			if val > max then val=max end
+			label.Text = text.." "..val
+			callback(val)
+		end
+	end)
+	return frame
+end
+
+-- =========================
+-- GUI CREATION
+-- =========================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SentryHubUI"
+ScreenGui.Parent = playerGui
+ScreenGui.ResetOnSpawn = false
+
+-- KEY PANEL
+local KeyFrame = Instance.new("Frame", ScreenGui)
+KeyFrame.Size = UDim2.new(0,300,0,180)
+KeyFrame.Position = UDim2.new(0.5,0,0.5,0)
+KeyFrame.AnchorPoint = Vector2.new(0.5,0.5)
+KeyFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+local cornerKF = Instance.new("UICorner", KeyFrame)
+cornerKF.CornerRadius = UDim.new(0,12)
+
+local KeyLabel = Instance.new("TextLabel", KeyFrame)
+KeyLabel.Size = UDim2.new(1,0,0,40)
+KeyLabel.Position = UDim2.new(0,0,0,10)
+KeyLabel.BackgroundTransparency = 1
+KeyLabel.Text = "Enter Sentry Hub Key"
+KeyLabel.Font = Enum.Font.GothamBold
+KeyLabel.TextSize = 18
+KeyLabel.TextColor3 = Color3.fromRGB(255,255,255)
+
+local KeyBox = Instance.new("TextBox", KeyFrame)
+KeyBox.Size = UDim2.new(0.8,0,0,30)
+KeyBox.Position = UDim2.new(0.1,0,0.35,0)
+KeyBox.PlaceholderText = "Key Here"
+KeyBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+KeyBox.TextColor3 = Color3.fromRGB(255,255,255)
+local cornerBox = Instance.new("UICorner", KeyBox)
+cornerBox.CornerRadius = UDim.new(0,8)
+
+local SubmitButton = Instance.new("TextButton", KeyFrame)
+SubmitButton.Size = UDim2.new(0.5,0,0,30)
+SubmitButton.Position = UDim2.new(0.25,0,0.65,0)
+SubmitButton.Text = "Submit"
+SubmitButton.TextColor3 = Color3.fromRGB(255,255,255)
+SubmitButton.BackgroundColor3 = Color3.fromRGB(70,70,70)
+local cornerSub = Instance.new("UICorner", SubmitButton)
+cornerSub.CornerRadius = UDim.new(0,8)
+
+-- Discord button (wrong key)
+local DiscordButton = CreateButton(KeyFrame,"Join Discord",function()
+	setclipboard(DISCORD_LINK)
+	DiscordButton.Text = "Copied!"
+end)
+DiscordButton.Position = UDim2.new(0.25,0,0.8,0)
+DiscordButton.Size = UDim2.new(0.5,0,0,30)
+DiscordButton.Visible = false
+
+-- MAIN HUB PANEL
+local MainUI = Instance.new("Frame", ScreenGui)
+MainUI.Size = UDim2.new(0,650,0,450)
+MainUI.Position = UDim2.new(0.5,0,0.5,0)
+MainUI.AnchorPoint = Vector2.new(0.5,0.5)
+MainUI.BackgroundColor3 = Color3.fromRGB(25,25,25)
+MainUI.Visible = false
+local cornerMain = Instance.new("UICorner", MainUI)
+cornerMain.CornerRadius = UDim.new(0,12)
+
+local Header = Instance.new("TextLabel", MainUI)
+Header.Size = UDim2.new(1,0,0,40)
+Header.Position = UDim2.new(0,0,0,0)
+Header.BackgroundTransparency = 1
+Header.Text = "Sentry Hub Ultimate"
+Header.Font = Enum.Font.GothamBold
+Header.TextSize = 24
+Header.TextColor3 = Color3.fromRGB(255,255,255)
+
+-- MASTER TOGGLE
+local masterToggleState = true
+local masterToggle = CreateButton(MainUI,"Master Toggle: ON",function()
+	masterToggleState = not masterToggleState
+	masterToggle.Text = "Master Toggle: "..(masterToggleState and "ON" or "OFF")
+	masterToggle.BackgroundColor3 = masterToggleState and Color3.fromRGB(0,170,0) or Color3.fromRGB(170,0,0)
+	MainUI.Visible = masterToggleState
+end)
+masterToggle.Size = UDim2.new(0,150,0,30)
+masterToggle.Position = UDim2.new(0.5,-75,0,45)
+
+-- SHOW/HIDE GUI BUTTON
+local ShowHideBtn = CreateButton(ScreenGui,"Hide GUI",function()
+	if MainUI.Visible then
+		TweenObject(MainUI,{Position=UDim2.new(0.5,0,0.5,-600)},0.4)
+		MainUI.Visible=false
+		ShowHideBtn.Text="Show GUI"
+	else
+		MainUI.Visible=true
+		TweenObject(MainUI,{Position=UDim2.new(0.5,0,0.5,0)},0.4)
+		ShowHideBtn.Text="Hide GUI"
+	end
+end)
+ShowHideBtn.Size=UDim2.new(0,120,0,30)
+ShowHideBtn.Position=UDim2.new(0.95,-130,0.05,0)
+ShowHideBtn.AnchorPoint=Vector2.new(0,0)
+
+-- =========================
+-- TABS & FRAMES
+-- =========================
+local tabs={}
+local tabNames={"Player","Tools","Misc","Cosmetic"}
+local selectedTab="Player"
+
+for i,name in ipairs(tabNames) do
+	local btn=CreateButton(MainUI,name,function()
+		selectedTab=name
+		for tName,tab in pairs(tabs) do
+			tab.Visible=false
+		end
+		tabs[name].Visible=true
+	end)
+	btn.Size=UDim2.new(0,120,0,25)
+	btn.Position=UDim2.new(0,50+(i-1)*135,0,45)
+end
+
+for _,tabName in ipairs(tabNames) do
+	local tab=Instance.new("ScrollingFrame",MainUI)
+	tab.Size = UDim2.new(1,-20,0.75,0)
+	tab.Position = UDim2.new(0,10,0,80)
+	tab.BackgroundTransparency = 1
+	tab.ScrollBarThickness = 6
+	tab.ScrollingDirection = Enum.ScrollingDirection.Y
+	tab.Visible = false
+	tabs[tabName] = tab
+	local layout=Instance.new("UIListLayout",tab)
+	layout.SortOrder=Enum.SortOrder.LayoutOrder
+	layout.FillDirection=Enum.FillDirection.Vertical
+	layout.Padding=UDim.new(0,5)
+end
+
+-- =========================
+-- PLAYER TAB FEATURES
+-- =========================
+local playerTab=tabs["Player"]
+CreateToggle(playerTab,"Infinite Jump",function(state)
+	if state then
+		activeConnections.infiniteJumpConn=UserInputService.JumpRequest:Connect(function()
+			if player.Character then
+				local hum=player.Character:FindFirstChildOfClass("Humanoid")
+				if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+			end
+		end)
+	else
+		if activeConnections.infiniteJumpConn then activeConnections.infiniteJumpConn:Disconnect() end
+	end
+end)
+CreateSlider(playerTab,"WalkSpeed",16,500,16,function(val)
+	if player.Character then
+		local hum=player.Character:FindFirstChildOfClass("Humanoid")
+		if hum then hum.WalkSpeed=val end
+	end
+end)
+CreateSlider(playerTab,"JumpPower",50,500,50,function(val)
+	if player.Character then
+		local hum=player.Character:FindFirstChildOfClass("Humanoid")
+		if hum then hum.JumpPower=val end
+	end
+end)
+CreateToggle(playerTab,"Invincible",function(state)
+	if player.Character then
+		local hum=player.Character:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.MaxHealth=state and math.huge or 100
+			hum.Health=state and math.huge or 100
+		end
+	end
+end)
+
+-- =========================
+-- TOOLS TAB FEATURES
+-- =========================
+local toolsTab=tabs["Tools"]
+CreateToggle(toolsTab,"Fly",function(state) print("Fly:",state) end)
+CreateToggle(toolsTab,"NoClip",function(state) print("NoClip:",state) end)
+CreateToggle(toolsTab,"Auto Clicker",function(state) print("AutoClick:",state) end)
+CreateButton(toolsTab,"Teleport to Spawn",function() print("Teleport Spawn") end)
+CreateButton(toolsTab,"Reset Character",function()
+	if player.Character then player.Character:BreakJoints() end
+end)
+-- Hitbox Expander
+CreateSlider(toolsTab,"Hitbox Size",3,10,3,function(size)
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+			local hrp = plr.Character.HumanoidRootPart
+			if not hitboxDefaults[plr] then hitboxDefaults[plr] = hrp.Size end
+			hrp.Size = Vector3.new(size,size,size)
+			hrp.Transparency = 0.5
+		end
+	end
+end)
+CreateToggle(toolsTab,"Enable Hitbox Expander",function(state)
+	if not state then
+		for plr, size in pairs(hitboxDefaults) do
+			if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+				local hrp = plr.Character.HumanoidRootPart
+				hrp.Size = size
+				hrp.Transparency = 0
+			end
+		end
+	end
+end)
+
+-- =========================
+-- MISC TAB FEATURES
+-- =========================
+local miscTab=tabs["Misc"]
+CreateSlider(miscTab,"Camera FOV",70,120,70,function(val)
+	if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView=val end
+end)
+CreateToggle(miscTab,"Gravity Low",function(state) game.Workspace.Gravity=state and 50 or 196.2 end)
+CreateToggle(miscTab,"Auto Sprint",function(state) print("Auto Sprint:",state) end)
+CreateToggle(miscTab,"FPS Counter",function(state) print("FPS Counter:",state) end)
+CreateToggle(miscTab,"Anti-Knockback",function(state) print("Anti-KB:",state) end)
+CreateToggle(miscTab,"Anti-Fall Damage",function(state) print("Anti-Fall:",state) end)
+CreateToggle(miscTab,"Auto Collect",function(state) print("Auto Collect:",state) end)
+
+-- =========================
+-- COSMETIC TAB FEATURES
+-- =========================
+local cosmeticTab=tabs["Cosmetic"]
+CreateToggle(cosmeticTab,"Dark Theme",function(state)
+	MainUI.BackgroundColor3=state and Color3.fromRGB(25,25,25) or Color3.fromRGB(200,200,200)
+end)
+CreateSlider(cosmeticTab,"GUI Transparency",0,1,0,function(val) MainUI.BackgroundTransparency=val end)
+CreateButton(cosmeticTab,"Random Header Color",function()
+	Header.TextColor3=Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255))
+end)
+CreateButton(cosmeticTab,"Random Button Colors",function()
+	for _, obj in pairs(MainUI:GetDescendants()) do
+		if obj:IsA("TextButton") then
+			obj.BackgroundColor3=Color3.fromRGB(math.random(0,255),math.random(0,255),math.random(0,255))
+		end
+	end
+end)
+CreateToggle(cosmeticTab,"GUI Invisible",function(state)
+	MainUI.Visible = not state
+end)
+
+-- =========================
+-- KEY SYSTEM FUNCTIONALITY
+-- =========================
+local keyActivated = false
+local keyTimeStart = 0
+
+SubmitButton.MouseButton1Click:Connect(function()
+	if KeyBox.Text == KEY then
+		keyActivated = true
+		keyTimeStart = tick()
+		KeyFrame.Visible=false
+		MainUI.Visible=true
+		MainUI.Position=UDim2.new(0.5,0,-0.5,0)
+		TweenObject(MainUI,{Position=UDim2.new(0.5,0,0.5,0)},0.5)
+		for tName, tab in pairs(tabs) do tab.Visible=tName=="Player" end
+	else
+		KeyBox.Text="Wrong Key!"
+		DiscordButton.Visible=true
+	end
+end)
+
+-- AUTO-EXPIRE KEY
+RunService.Heartbeat:Connect(function()
+	if keyActivated then
+		if tick() - keyTimeStart > KEY_DURATION then
+			MainUI.Visible = false
+			KeyFrame.Visible = true
+			KeyBox.Text = ""
+			DiscordButton.Visible = false
+			keyActivated = false
+		end
+	end
+end)
